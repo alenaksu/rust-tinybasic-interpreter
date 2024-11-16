@@ -1,0 +1,30 @@
+<line> ::= <number> <whitespace> <statement> <newline> | <statement> <newline>
+
+<statement> ::=  <print_statement> | <if_statement> | <input_statement> | <var_statement> | <goto_statement> | <gosub_statement> | <return_statement> | <end_statement>
+
+<print_statement> ::= "PRINT" <whitespace> <expression_list>
+<if_statement> ::= "IF" <whitespace> <expression> <opt_whitespace> <relation_operator> <opt_whitespace> <expression> <whitespace> "THEN" <whitespace> <statement>
+<input_statement> ::= "INPUT" <whitespace> <var_list>
+<var_statement> ::= "LET" <whitespace> <var> <opt_whitespace> "=" <opt_whitespace> <expression>
+<goto_statement> ::= "GOTO" <whitespace> <expression>
+<gosub_statement> ::= "GOSUB" <whitespace> <expression>
+<return_statement> ::= "RETURN"
+<end_statement> ::= "END"
+
+<opt_whitespace> ::= <whitespace>*
+<whitespace> ::= " " <whitespace>*
+<newline> ::= "\n"
+<arithmentic_operator> ::= ("+" | "-" | "*" | "/")
+<relation_operator> ::= "<" (">" | "=")* | ">" ("<" | "=")* | "="
+<unary_operator> ::= ("+" | "-")
+<unary_expression> ::= <unary_operator>* <opt_whitespace> (<var> | <number> | "(" <opt_whitespace> <expression> <opt_whitespace> ")")
+<binary_expression> ::= <unary_expression> <opt_whitespace> <arithmentic_operator> <opt_whitespace> <unary_expression>
+<expression> ::= <unary_expression> | <binary_expression>
+<expression_list> ::= (<string> | <expression>) (<opt_whitespace> "," <opt_whitespace> (<var> | <expression>))*
+<var_list> ::= <var> (<opt_whitespace> "," <opt_whitespace> <var>)*
+<var> ::= [A-Z]
+<number> ::= <digit> <digit>*
+<digit> ::= [0-9]
+<letter> ::= [a-z] | [A-Z]
+<symbol> ::= "<" | ">" | "~" | "@" | "#" | "$" | "`" | "^" | "&" | "*" | "_" | "'" | "-" | "+" | "=" | "|" | "/" | "!" | "?" | "." | "," | ";" | ":"
+<string> ::= "\"" (<letter> | <digit> | <symbol> | <whitespace>)+ "\""
