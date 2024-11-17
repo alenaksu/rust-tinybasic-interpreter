@@ -7,6 +7,7 @@ use crate::parser::{self, Parser};
 use std::collections::HashMap;
 use std::io::Write;
 use std::io::{stdin, stdout};
+use std::ops::Not;
 
 #[derive(Debug, Clone)]
 enum Value {
@@ -38,7 +39,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_expression(&self, expression: &Expression) -> Value {
+    fn eval_expression(&self, expression: &Expression) -> Value {
         match expression {
             Expression::Identifier(identifier) => {
                 let value = self.context.variables.get(&identifier.name);
@@ -52,8 +53,8 @@ impl Interpreter {
                 Literal::String { value } => Value::String(value.clone()),
             },
             Expression::BinaryExpression(binary) => {
-                let left = self.visit_expression(&binary.left);
-                let right = self.visit_expression(&binary.right);
+                let left = self.eval_expression(&binary.left);
+                let right = self.eval_expression(&binary.right);
 
                 match (left, right) {
                     (Value::Number(left), Value::Number(right)) => {
@@ -89,9 +90,9 @@ impl Interpreter {
         }
     }
 
-    fn visit_print_statement(&self, expressions: &Vec<Expression>) {
+    fn eval_print_statement(&self, expressions: &Vec<Expression>) {
         for expression in expressions {
-            let value = self.visit_expression(expression);
+            let value = self.eval_expression(expression);
             match value {
                 Value::Number(value) => println!("{}", value),
                 Value::String(value) => println!("{}", value),
@@ -100,9 +101,9 @@ impl Interpreter {
         }
     }
 
-    fn visit_if_statement(&mut self, condition: &IfCondition, then: &Box<Statement>) {
-        let left = self.visit_expression(&condition.left);
-        let right = self.visit_expression(&condition.right);
+    fn eval_if_statement(&mut self, condition: &IfCondition, then: &Box<Statement>) {
+        let left = self.eval_expression(&condition.left);
+        let right = self.eval_expression(&condition.right);
 
         match (left, right) {
             (Value::Number(left), Value::Number(right)) => {
@@ -116,14 +117,14 @@ impl Interpreter {
                 };
 
                 if result {
-                    self.visit_statement(&then);
+                    self.eval_statement(&then);
                 }
             }
             _ => {}
         }
     }
 
-    fn visit_run_statement(&mut self) {
+    fn eval_run_statement(&mut self) {
         self.context.current_line = 0;
 
         while self.context.current_line < 255 {
@@ -133,21 +134,21 @@ impl Interpreter {
             match line {
                 Some(line) => {
                     let statement = &line.statement;
-                    self.visit_statement(statement);
+                    self.eval_statement(statement);
                 }
                 None => {}
             }
         }
     }
 
-    fn visit_var_statement(&mut self, declaration: &VarDeclaration) {
-        let value = self.visit_expression(&declaration.value);
+    fn eval_var_statement(&mut self, declaration: &VarDeclaration) {
+        let value = self.eval_expression(&declaration.value);
         self.context
             .variables
             .insert(declaration.name.to_string(), value);
     }
 
-    fn visit_input_statement(&mut self, variables: &Vec<Identifier>) {
+    fn eval_input_statement(&mut self, variables: &Vec<Identifier>) {
         for variable in variables {
             print!("{}? ", variable.name);
             stdout().flush().unwrap();
@@ -160,7 +161,7 @@ impl Interpreter {
 
             match expression {
                 Ok(expression) => {
-                    let value = self.visit_expression(&expression);
+                    let value = self.eval_expression(&expression);
                     self.context
                         .variables
                         .insert(variable.name.to_string(), value);
@@ -173,15 +174,22 @@ impl Interpreter {
         }
     }
 
-    fn visit_statement(&mut self, statement: &Statement) {
+    fn eval_statement(&mut self, statement: &Statement) {
         match statement {
-            Statement::IfStatement { condition, then } => {
-                self.visit_if_statement(&condition, &then)
+            Statement::IfStatement { condition, then } => self.eval_if_statement(&condition, &then),
+            Statement::PrintStatement { expressions } => self.eval_print_statement(expressions),
+            Statement::VarStatement { declaration } => self.eval_var_statement(&declaration),
+            Statement::InputStatement { variables } => self.eval_input_statement(variables),
+            Statement::GoToStatement { location } => {
+                println!("{}", RuntimeError::NotImplemented(String::from("GOTO")))
             }
-            Statement::PrintStatement { expressions } => self.visit_print_statement(expressions),
-            Statement::VarStatement { declaration } => self.visit_var_statement(&declaration),
-            Statement::InputStatement { variables } => self.visit_input_statement(variables),
-            Statement::RunStatement => self.visit_run_statement(),
+            Statement::GoSubStatement { location } => {
+                println!("{}", RuntimeError::NotImplemented(String::from("GOSUB")))
+            }
+            Statement::EndStatement => {
+                println!("{}", RuntimeError::NotImplemented(String::from("END")))
+            }
+            Statement::RunStatement => self.eval_run_statement(),
             _ => {}
         }
     }
@@ -191,7 +199,7 @@ impl Interpreter {
             let line_number = ast.number.unwrap();
             self.context.program[line_number] = Some(ast);
         } else {
-            self.visit_statement(&ast.statement);
+            self.eval_statement(&ast.statement);
         }
     }
 
