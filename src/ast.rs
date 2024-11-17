@@ -1,8 +1,4 @@
-pub struct Digit(pub i16);
-
-pub struct Var(String);
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RelationOperator {
     Equal,
     LessThan,
@@ -11,13 +7,13 @@ pub enum RelationOperator {
     GreaterThanOrEqual,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UnaryOperator {
     Plus,
     Minus,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ArithmeticOperator {
     Add,
     Subtract,
@@ -25,41 +21,52 @@ pub enum ArithmeticOperator {
     Divide,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct UnaryExpression {
     pub operator: Option<UnaryOperator>,
     pub argument: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BinaryExpression {
     pub operator: ArithmeticOperator,
     pub left: Box<Expression>,
     pub right: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct VarDeclaration {
     pub name: String,
     pub value: Expression,
 }
 
-#[derive(Debug)]
-pub enum Expression {
-    UnaryExpression { expression: UnaryExpression },
-    BinaryExpression { expression: BinaryExpression },
-    Identifier { name: String },
-    Number { value: usize },
+#[derive(Debug, PartialEq)]
+pub struct Identifier {
+    pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub enum Literal {
+    Number { value: usize },
+    String { value: String },
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Expression {
+    UnaryExpression(UnaryExpression),
+    BinaryExpression(BinaryExpression),
+    Identifier(Identifier),
+    Literal(Literal),
+}
+
+#[derive(Debug, PartialEq)]
 pub struct IfCondition {
     pub operator: RelationOperator,
     pub left: Expression,
     pub right: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     IfStatement {
         condition: IfCondition,
@@ -67,6 +74,9 @@ pub enum Statement {
     },
     PrintStatement {
         expressions: Vec<Expression>,
+    },
+    InputStatement {
+        variables: Vec<Identifier>,
     },
     VarStatement {
         declaration: VarDeclaration,
@@ -82,7 +92,7 @@ pub enum Statement {
     Empty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Line {
     pub number: Option<usize>,
     pub statement: Statement,

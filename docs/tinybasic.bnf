@@ -18,9 +18,9 @@
 <relation_operator> ::= "<" (">" | "=")* | ">" ("<" | "=")* | "="
 <unary_operator> ::= ("+" | "-")
 <unary_expression> ::= <unary_operator>* <opt_whitespace> (<var> | <number> | "(" <opt_whitespace> <expression> <opt_whitespace> ")")
-<binary_expression> ::= <unary_expression> <opt_whitespace> <arithmentic_operator> <opt_whitespace> <unary_expression>
-<expression> ::= <unary_expression> | <binary_expression>
-<expression_list> ::= (<string> | <expression>) (<opt_whitespace> "," <opt_whitespace> (<var> | <expression>))*
+<binary_expression> ::= <unary_expression> <opt_whitespace> <arithmentic_operator> <opt_whitespace> <expression>
+<expression> ::=  <binary_expression> | <unary_expression>
+<expression_list> ::= (<string> | <expression>) (<opt_whitespace> "," <opt_whitespace> (<expression_list>))*
 <var_list> ::= <var> (<opt_whitespace> "," <opt_whitespace> <var>)*
 <var> ::= [A-Z]
 <number> ::= <digit> <digit>*

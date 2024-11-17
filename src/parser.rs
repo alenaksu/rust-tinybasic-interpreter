@@ -5,14 +5,12 @@ use crate::ast::*;
 use crate::lexer::{Lexer, Token, TokenKind, TokenValue};
 
 pub struct Parser<'a> {
-    source: &'a str,
     lexer: Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
-            source,
             lexer: Lexer::new(source),
         }
     }
@@ -50,6 +48,7 @@ impl<'a> Parser<'a> {
 
         self.expect_token(
             &[
+                TokenKind::StringLiteral,
                 TokenKind::NumberLiteral,
                 TokenKind::Identifier,
                 TokenKind::LeftParen,
@@ -58,44 +57,61 @@ impl<'a> Parser<'a> {
         );
 
         let next_token = self.lexer.next();
-        let argument = match next_token.kind {
+        let argument: Expression = match next_token.kind {
             TokenKind::LeftParen => {
-                self.lexer.next();
                 let expression = self.parse_expression();
 
                 self.expect_token(&[TokenKind::RightParen], None);
                 self.lexer.next();
 
+                // Expression::UnaryExpression(UnaryExpression {
+                //     operator,
+                //     argument: Box::new(expression),
+                // })
                 expression
             }
-            TokenKind::Identifier => Expression::Identifier {
+            TokenKind::Identifier => Expression::Identifier(Identifier {
                 name: match next_token.value {
                     TokenValue::String(s) => s.clone(),
                     _ => unreachable!(),
                 },
-            },
-            TokenKind::NumberLiteral => Expression::Number {
+            }),
+            TokenKind::NumberLiteral => Expression::Literal(Literal::Number {
                 value: match next_token.value {
                     TokenValue::Digit(d) => d,
                     _ => unreachable!(),
                 },
-            },
+            }),
+            TokenKind::StringLiteral => Expression::Literal(Literal::String {
+                value: match next_token.value {
+                    TokenValue::String(s) => s.clone(),
+                    _ => unreachable!(),
+                },
+            }),
             _ => unreachable!(),
         };
 
-        Expression::UnaryExpression {
-            expression: UnaryExpression {
-                operator: operator,
-                argument: Box::new(argument),
-            },
+        if operator.is_none() {
+            return argument;
+        }
+
+        Expression::UnaryExpression(UnaryExpression {
+            operator,
+            argument: Box::new(argument),
+        })
+    }
+
+    fn get_expression_precedence(&self, operator: &ArithmeticOperator) -> usize {
+        match operator {
+            ArithmeticOperator::Add | ArithmeticOperator::Subtract => 1,
+            ArithmeticOperator::Multiply | ArithmeticOperator::Divide => 2,
         }
     }
 
     fn parse_expression(&mut self) -> Expression {
         let left = self.parse_unary_expression();
 
-        let next_token = self.lexer.peek();
-        let operator = match next_token.kind {
+        let operator = match self.lexer.peek().kind {
             TokenKind::Add => Some(ArithmeticOperator::Add),
             TokenKind::Subtract => Some(ArithmeticOperator::Subtract),
             TokenKind::Multiply => Some(ArithmeticOperator::Multiply),
@@ -110,24 +126,61 @@ impl<'a> Parser<'a> {
         // skip operator
         self.lexer.next();
 
-        let right = self.parse_unary_expression();
+        let right = self.parse_expression();
+        let operator = operator.unwrap();
 
-        Expression::BinaryExpression {
-            expression: BinaryExpression {
-                operator: operator.unwrap(),
-                left: Box::new(left),
-                right: Box::new(right),
-            },
-        }
+        match (&right) {
+            (Expression::BinaryExpression(right_expression)) => {
+                let left_precedence = self.get_expression_precedence(&operator);
+                let right_precedence = self.get_expression_precedence(&right_expression.operator);
+
+                if left_precedence < right_precedence {
+                    return Expression::BinaryExpression(BinaryExpression {
+                        operator,
+                        left: Box::new(right),
+                        right: Box::new(left),
+                    });
+                }
+            }
+            _ => {}
+        };
+
+        Expression::BinaryExpression(BinaryExpression {
+            operator,
+            left: Box::new(left),
+            right: Box::new(right),
+        })
     }
 
     fn parse_print_statement(&mut self) -> Statement {
         let mut expressions: Vec<Expression> = vec![];
-        while self.lexer.peek().kind != TokenKind::Eol {
+        loop {
             expressions.push(self.parse_expression());
-        }
+            if self.lexer.peek().kind != TokenKind::Comma {
+                return Statement::PrintStatement { expressions };
+            }
 
-        Statement::PrintStatement { expressions }
+            self.lexer.next();
+        }
+    }
+
+    fn parse_input_statement(&mut self) -> Statement {
+        let mut variables: Vec<Identifier> = vec![];
+        loop {
+            self.expect_token(&[TokenKind::Identifier], None);
+            variables.push(Identifier {
+                name: match self.lexer.next().value {
+                    TokenValue::String(s) => s.clone(),
+                    _ => unreachable!(),
+                },
+            });
+
+            if self.lexer.peek().kind != TokenKind::Comma {
+                return Statement::InputStatement { variables };
+            }
+
+            self.lexer.next();
+        }
     }
 
     fn parse_if_statement(&mut self) -> Statement {
@@ -181,6 +234,10 @@ impl<'a> Parser<'a> {
 
         let next_token = self.lexer.next();
         let name = next_token.value;
+
+        self.expect_token(&[TokenKind::Equal], None);
+        self.lexer.next();
+
         let value = self.parse_expression();
 
         return Statement::VarStatement {
@@ -211,6 +268,7 @@ impl<'a> Parser<'a> {
         let statement = match next_token.value.clone() {
             TokenValue::String(s) => match s.as_str() {
                 "PRINT" => self.parse_print_statement(),
+                "INPUT" => self.parse_input_statement(),
                 "IF" => self.parse_if_statement(),
                 "LET" => self.parse_var_statement(),
                 "GOTO" => self.parse_goto_statement(),

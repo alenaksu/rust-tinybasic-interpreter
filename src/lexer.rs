@@ -24,7 +24,6 @@ pub enum TokenKind {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenValue {
     None,
-    WhiteSpace,
     NewLine,
     Digit(usize),
     String(String),
@@ -237,7 +236,6 @@ impl<'a> Lexer<'a> {
     fn get_value(&self, start: usize, end: usize) -> TokenValue {
         match self.source[start..end].trim() {
             "" => TokenValue::None,
-            " " => TokenValue::WhiteSpace,
             "\n" => TokenValue::NewLine,
             value => {
                 if let Ok(value) = value.parse() {
