@@ -1,5 +1,9 @@
 use std::str::Chars;
 
+use crate::errors::SyntaxError;
+
+type LexerResult<T> = std::result::Result<T, SyntaxError>;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
     StringLiteral,
@@ -14,6 +18,7 @@ pub enum TokenKind {
     Multiply,
     Divide,
     Equal,
+    NotEqual,
     LessThan,
     LessThanOrEqual,
     GreaterThan,
@@ -56,7 +61,7 @@ impl Token {
 pub struct Lexer<'a> {
     source: &'a str,
     chars: Chars<'a>,
-    next_token: Token,
+    next_token: LexerResult<Token>,
 }
 
 impl<'a> Lexer<'a> {
@@ -64,7 +69,7 @@ impl<'a> Lexer<'a> {
         let mut instance = Self {
             source,
             chars: source.chars(),
-            next_token: Token::default(),
+            next_token: Ok(Token::default()),
         };
 
         instance.next_token = instance.consume_token();
@@ -72,7 +77,7 @@ impl<'a> Lexer<'a> {
         return instance;
     }
 
-    fn consume_number_literal(&mut self) -> Token {
+    fn consume_number_literal(&mut self) -> LexerResult<Token> {
         let start = self.offset();
         while let Some(c) = self.peek_char() {
             match c {
@@ -85,17 +90,17 @@ impl<'a> Lexer<'a> {
 
         let value = self.source[start..self.offset()].to_string();
 
-        Token {
+        Ok(Token {
             kind: TokenKind::NumberLiteral,
             span: Span {
                 start,
                 end: self.offset(),
             },
             value: TokenValue::Digit(value.parse().unwrap()),
-        }
+        })
     }
 
-    fn consume_string_literal(&mut self) -> Token {
+    fn consume_string_literal(&mut self) -> LexerResult<Token> {
         self.next_char();
 
         let start = self.offset();
@@ -103,17 +108,13 @@ impl<'a> Lexer<'a> {
             match c {
                 '"' => {
                     let end = self.offset();
-
                     self.next_char();
 
-                    return Token {
+                    return Ok(Token {
                         kind: TokenKind::StringLiteral,
-                        span: Span {
-                            start,
-                            end: self.offset(),
-                        },
+                        span: Span { start, end },
                         value: self.get_value(start, end),
-                    };
+                    });
                 }
                 _ => {
                     self.next_char();
@@ -121,14 +122,14 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        panic!("Unterminated string literal at column {}", self.offset());
+        Err(SyntaxError::UnterminatedStringLiteral(self.offset()))
     }
 
-    fn consume_identifier(&mut self) -> Token {
+    fn consume_identifier(&mut self) -> LexerResult<Token> {
         let start = self.offset();
         while let Some(c) = self.peek_char() {
             match c {
-                'A'..='Z' | 'a'..='z' => {
+                'A'..='Z' => {
                     self.next_char();
                 }
                 _ => break,
@@ -136,27 +137,27 @@ impl<'a> Lexer<'a> {
         }
         let end = self.offset();
 
-        Token {
+        Ok(Token {
             kind: TokenKind::Identifier,
             span: Span { start, end },
             value: self.get_value(start, end),
-        }
+        })
     }
 
-    fn consume_new_line(&mut self) -> Token {
+    fn consume_new_line(&mut self) -> LexerResult<Token> {
         self.next_char();
 
-        Token {
+        Ok(Token {
             kind: TokenKind::NewLine,
             span: Span {
                 start: self.offset(),
                 end: self.offset(),
             },
             value: TokenValue::NewLine,
-        }
+        })
     }
 
-    fn consume_token(&mut self) -> Token {
+    fn consume_token(&mut self) -> LexerResult<Token> {
         while let Some(c) = self.peek_char() {
             match c {
                 '\n' => return self.consume_new_line(),
@@ -173,68 +174,73 @@ impl<'a> Lexer<'a> {
                         ')' => TokenKind::RightParen,
                         ',' => TokenKind::Comma,
                         '=' => TokenKind::Equal,
-                        '>' => {
-                            if self.peek_char() == Some('=') {
+                        '>' => match self.peek_char() {
+                            Some('=') => {
                                 self.next_char();
                                 TokenKind::GreaterThanOrEqual
-                            } else {
-                                TokenKind::GreaterThan
                             }
-                        }
-                        '<' => {
-                            if self.peek_char() == Some('=') {
+                            _ => TokenKind::GreaterThan,
+                        },
+                        '<' => match self.peek_char() {
+                            Some('=') => {
                                 self.next_char();
                                 TokenKind::LessThanOrEqual
-                            } else {
-                                TokenKind::LessThan
                             }
-                        }
+                            Some('>') => {
+                                self.next_char();
+                                TokenKind::NotEqual
+                            }
+                            _ => TokenKind::LessThan,
+                        },
                         _ => unreachable!(),
                     };
 
                     let start = self.offset();
                     let end = self.offset();
 
-                    return Token {
+                    return Ok(Token {
                         kind,
                         span: Span { start, end },
                         value: self.get_value(start, end),
-                    };
+                    });
                 }
                 '0'..='9' => return self.consume_number_literal(),
-                'A'..='Z' | 'a'..='z' => return self.consume_identifier(),
+                'A'..='Z' => return self.consume_identifier(),
                 ' ' => {
                     self.next_char();
                 }
                 _ => {
-                    self.next_char();
+                    return Err(SyntaxError::UnexpectedCharacter(c, self.offset()));
                 }
             };
         }
 
-        Token {
+        Ok(Token {
             kind: TokenKind::Eol,
             span: Span {
                 start: self.offset(),
                 end: self.offset(),
             },
             value: TokenValue::None,
-        }
+        })
     }
 
-    pub fn next(&mut self) -> Token {
-        let token = self.next_token.clone();
-        self.next_token = self.consume_token();
+    pub fn next(&mut self) -> LexerResult<Token> {
+        let next_token = self.consume_token();
+        let token = std::mem::replace(&mut self.next_token, next_token);
 
         token
     }
 
-    pub fn peek(&mut self) -> Token {
-        self.next_token.clone()
+    pub fn peek(&self) -> LexerResult<Token> {
+        match &self.next_token {
+            Ok(token) => Ok(token.clone()),
+            Err(err) => Err(err.clone()),
+        }
     }
 
     fn get_value(&self, start: usize, end: usize) -> TokenValue {
-        match self.source[start..end].trim() {
+        match &self.source[start..end] {
             "" => TokenValue::None,
             "\n" => TokenValue::NewLine,
             value => {

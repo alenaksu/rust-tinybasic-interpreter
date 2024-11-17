@@ -1,19 +1,20 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RelationOperator {
     Equal,
+    NotEqual,
     LessThan,
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Plus,
     Minus,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ArithmeticOperator {
     Add,
     Subtract,
@@ -21,37 +22,37 @@ pub enum ArithmeticOperator {
     Divide,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnaryExpression {
     pub operator: Option<UnaryOperator>,
     pub argument: Box<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpression {
     pub operator: ArithmeticOperator,
     pub left: Box<Expression>,
     pub right: Box<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VarDeclaration {
     pub name: String,
     pub value: Expression,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub name: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Number { value: usize },
     String { value: String },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     UnaryExpression(UnaryExpression),
     BinaryExpression(BinaryExpression),
@@ -59,14 +60,14 @@ pub enum Expression {
     Literal(Literal),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IfCondition {
     pub operator: RelationOperator,
     pub left: Expression,
     pub right: Expression,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     IfStatement {
         condition: IfCondition,
@@ -87,12 +88,13 @@ pub enum Statement {
     GoSubStatement {
         location: Expression,
     },
+    RunStatement,
     ReturnStatement,
     EndStatement,
     Empty,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug,Clone)]
 pub struct Line {
     pub number: Option<usize>,
     pub statement: Statement,
