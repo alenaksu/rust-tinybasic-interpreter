@@ -1,6 +1,5 @@
 use std::fmt;
 
-use crate::ast::ArithmeticOperator;
 use crate::lexer::Token;
 
 #[derive(Debug, Clone)]
@@ -8,6 +7,7 @@ pub enum SyntaxError {
     UnexpectedCharacter(char, usize),
     UnterminatedStringLiteral(usize),
     UnexpectedToken(Token),
+    UnexpectedIdentifier(String, usize),
     InvalidVariableName(String, usize),
 }
 
@@ -28,7 +28,10 @@ impl fmt::Display for SyntaxError {
                 )
             }
             Self::InvalidVariableName(name, pos) => {
-                write!(f, "Invalid variable name {} at position {}", name, pos)
+                write!(f, "Invalid variable name '{}' at position {}", name, pos)
+            }
+            Self::UnexpectedIdentifier(name, pos) => {
+                write!(f, "Unexpected identifier '{}' at position {}", name, pos)
             }
         }
     }
@@ -36,15 +39,25 @@ impl fmt::Display for SyntaxError {
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
+    Generic(String),
     NotImplemented(String),
     InvalidOperation(usize),
+    SyntaxError(SyntaxError),
+}
+
+impl RuntimeError {
+    pub fn new(message: &str) -> Self {
+        Self::Generic(message.to_string())
+    }
 }
 
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Generic(message) => write!(f, "{}", message),
             Self::NotImplemented(name) => write!(f, "Not implemented: {}", name),
             Self::InvalidOperation(pos) => write!(f, "Invalid operation at line {}", pos),
+            Self::SyntaxError(name) => write!(f, "Syntax error: {}", name),
         }
     }
 }

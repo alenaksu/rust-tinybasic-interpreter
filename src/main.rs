@@ -19,6 +19,15 @@ fn main() {
         stdout().flush().unwrap();
 
         stdin().read_line(&mut buffer).unwrap();
-        interpreter.execute(&buffer);
+        let result = interpreter.execute(&buffer);
+
+        match result {
+            Ok(value) => {
+                println!("{}", value);
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+            }
+        }
     }
 }

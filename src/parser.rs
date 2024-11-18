@@ -235,7 +235,10 @@ impl<'a> Parser<'a> {
         match name.clone() {
             TokenValue::String(name) => {
                 if name.len() > 1 {
-                    return Err(SyntaxError::InvalidVariableName(name, next_token.span.start));
+                    return Err(SyntaxError::InvalidVariableName(
+                        name,
+                        next_token.span.start,
+                    ));
                 }
             }
             _ => {}
@@ -280,11 +283,12 @@ impl<'a> Parser<'a> {
                 "GOTO" => self.parse_goto_statement(),
                 "GOSUB" => self.parse_gosub_statement(),
                 "RUN" => Ok(Statement::RunStatement),
+                "CLEAR" => Ok(Statement::ClearStatement),
                 "RETURN" => Ok(Statement::ReturnStatement),
                 "END" => Ok(Statement::EndStatement),
-                _ => Ok(Statement::Empty),
+                _ => Err(SyntaxError::UnexpectedIdentifier(s, next_token.span.start)),
             },
-            _ => Ok(Statement::Empty),
+            _ => Err(SyntaxError::UnexpectedToken(next_token)),
         };
 
         statement
