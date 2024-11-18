@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
       "dev": "vite ./ui",
-      "build": "vite build ./ui --out-dir ../docs",
+      "build": "vite build ./ui --out-dir ../docs --base /rust-tinybasic-interpreter/",
       "preview": "vite preview ./ui"
     },
     "devDependencies": {
