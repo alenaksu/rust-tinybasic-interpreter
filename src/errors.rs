@@ -43,6 +43,7 @@ pub enum RuntimeError {
     NotImplemented(String),
     InvalidOperation(usize),
     SyntaxError(SyntaxError),
+    InvalidState(String),
 }
 
 impl RuntimeError {
@@ -58,6 +59,7 @@ impl fmt::Display for RuntimeError {
             Self::NotImplemented(name) => write!(f, "Not implemented: {}", name),
             Self::InvalidOperation(pos) => write!(f, "Invalid operation at line {}", pos),
             Self::SyntaxError(name) => write!(f, "Syntax error: {}", name),
+            Self::InvalidState(name) => write!(f, "Invalid state: {}", name),
         }
     }
 }

@@ -191,6 +191,5 @@ body {
 }
 
 #input::before {
-    content: '>';
-    padding-right: 0.25rem;
+    content: attr(data-prompt);
 }

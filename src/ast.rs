@@ -92,11 +92,13 @@ pub enum Statement {
     ReturnStatement,
     EndStatement,
     ClearStatement,
+    ListStatement,
     Empty,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Line {
     pub number: Option<usize>,
     pub statement: Statement,
+    pub source: String,
 }

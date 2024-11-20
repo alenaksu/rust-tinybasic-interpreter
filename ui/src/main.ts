@@ -1,34 +1,50 @@
 import init, { Interpreter } from '../../out/tinybasic';
 
-const CLEAR_SCRRN = '\x0C';
-
-const terminanl = document.querySelector<HTMLDivElement>('#terminal')!;
+const terminal = document.querySelector<HTMLDivElement>('#terminal')!;
 const input = document.querySelector<HTMLInputElement>('#input')!;
 const output = document.querySelector<HTMLDivElement>('#output')!;
 
 const write = (text: string) => {
-    output.innerHTML += `${text}\n`;
+    output.innerText += text;
     output.scrollTop = output.scrollHeight;
 };
 
-const read = () => {
-    const value = input.innerText.trim().toUpperCase();
-    input.innerText = '';
-
-    write(`:${value}`);
-
-    return value;
+const clear = () => {
+    output.innerText = '';
 };
 
-const clear = () => {
-    output.innerHTML = '';
+const readLine = () =>
+    new Promise<string>((resolve) => {
+        const controller = new AbortController();
+        input.addEventListener(
+            'keydown',
+            (e) => {
+                if (e.key === 'Enter') {
+                    const value = input.innerText.trim().toUpperCase();
+                    input.innerText = '';
+
+                    controller.abort();
+                    resolve(value);
+                }
+            },
+            { signal: controller.signal }
+        );
+    });
+
+const setPrompt = (prompt: string) => {
+    input.dataset.prompt = prompt;
+}
+
+(window as any).terminal = {
+    terminal_write: write,
+    terminal_read_line: readLine,
+    terminal_clear: clear,
+    terminal_set_prompt: setPrompt,
 };
 
 clear();
 init().then(() => {
-    const interpreter = new Interpreter();
-
-    terminanl.addEventListener('focus', () => {
+    terminal.addEventListener('focus', () => {
         input.focus();
     });
 
@@ -41,24 +57,11 @@ init().then(() => {
                 e.preventDefault();
                 break;
             }
-            case 'Enter': {
-                try {
-                    const value = read();
-                    const result = interpreter.execute(value);
-
-                    if (result) {
-                        if (result === CLEAR_SCRRN) {
-                            clear();
-                        } else {
-                            write(`${result}\n`);
-                        }
-                    }
-                } catch (e) {
-                    write((e as Error).message);
-                }
-            }
         }
     });
 
-    write('Ready!');
+    const interpreter = new Interpreter();
+    interpreter.execute().then(() => {
+        write('BYE.');
+    });
 });

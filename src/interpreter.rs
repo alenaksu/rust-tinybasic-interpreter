@@ -6,11 +6,12 @@ use crate::errors::RuntimeError;
 use crate::parser::Parser;
 use std::collections::HashMap;
 use std::fmt;
-use std::io::{stdin, stdout, Write};
 
 use wasm_bindgen::prelude::*;
 
-#[derive(Debug, Clone)]
+use crate::io::{clear, read_line, set_prompt, write, write_line};
+
+#[derive(Debug, Clone, PartialEq)]
 enum Value {
     Number(usize),
     String(String),
@@ -117,7 +118,7 @@ impl Interpreter {
         Ok(Value::String(results.join(", ")))
     }
 
-    fn visit_if_statement(
+    async fn visit_if_statement(
         &mut self,
         condition: &IfCondition,
         then: &Box<Statement>,
@@ -137,7 +138,7 @@ impl Interpreter {
                 };
 
                 if result {
-                    self.visit_statement(&then)
+                    Box::pin(self.visit_statement(&then)).await
                 } else {
                     Ok(Value::None)
                 }
@@ -146,7 +147,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_run_statement(&mut self) -> InterpreterResult {
+    async fn visit_run_statement(&mut self) -> InterpreterResult {
         self.context.current_line = 0;
 
         let mut output: Vec<Value> = vec![];
@@ -157,7 +158,7 @@ impl Interpreter {
             match line {
                 Some(line) => {
                     let statement = &line.statement;
-                    output.push(self.visit_statement(statement)?);
+                    output.push(self.visit_statement(statement).await?);
                 }
                 None => {}
             }
@@ -166,6 +167,7 @@ impl Interpreter {
         Ok(Value::String(
             output
                 .iter()
+                .filter(|v| **v != Value::None)
                 .map(|v| format!("{}", v))
                 .collect::<Vec<String>>()
                 .join("\n"),
@@ -181,15 +183,14 @@ impl Interpreter {
         Ok(Value::None)
     }
 
-    fn visit_input_statement(&mut self, variables: &Vec<Identifier>) -> InterpreterResult {
+    async fn visit_input_statement(&mut self, variables: &Vec<Identifier>) -> InterpreterResult {
         for variable in variables {
-            print!("{}? ", variable.name);
-            stdout().flush().unwrap();
+            set_prompt(format!("{}? ", variable.name).as_str());
 
-            let mut buffer = String::new();
-            stdin().read_line(&mut buffer).unwrap();
+            let input = read_line().await;
+            write_line(format!("{}? {}", variable.name, input).as_str());
 
-            let mut parser = Parser::new(&buffer);
+            let mut parser = Parser::new(input.as_str());
             let expression = parser.parse_expression();
 
             match expression {
@@ -206,19 +207,38 @@ impl Interpreter {
         Ok(Value::None)
     }
 
-    fn visit_statement(&mut self, statement: &Statement) -> InterpreterResult {
+    fn visit_list_statement(&self) -> InterpreterResult {
+        let mut output: Vec<String> = vec![];
+        for line in self.context.program.iter() {
+            match line {
+                Some(line) => {
+                    output.push(format!("{}", line.source.trim()));
+                }
+                None => {}
+            }
+        }
+
+        Ok(Value::String(output.join("\n")))
+    }
+
+    fn visit_clear_statement(&self) -> InterpreterResult {
+        clear();
+        Ok(Value::None)
+    }
+
+    async fn visit_statement(&mut self, statement: &Statement) -> InterpreterResult {
         match statement {
             Statement::IfStatement { condition, then } => {
-                return self.visit_if_statement(&condition, &then);
+                return self.visit_if_statement(&condition, &then).await;
             }
             Statement::PrintStatement { expressions } => {
-                return self.visit_print_statement(expressions)
+                return self.visit_print_statement(expressions);
             }
             Statement::VarStatement { declaration } => {
                 return self.visit_var_statement(&declaration);
             }
             Statement::InputStatement { variables } => {
-                return self.visit_input_statement(variables);
+                return self.visit_input_statement(variables).await;
             }
             Statement::GoToStatement { location } => {
                 return Err(RuntimeError::NotImplemented(String::from("GOTO")));
@@ -229,59 +249,63 @@ impl Interpreter {
             Statement::EndStatement => {
                 return Err(RuntimeError::NotImplemented(String::from("END")));
             }
+            Statement::ListStatement => {
+                return self.visit_list_statement();
+            }
             Statement::RunStatement => {
-                return self.visit_run_statement();
+                return Box::pin(self.visit_run_statement()).await;
             }
             Statement::ReturnStatement => {
                 return Err(RuntimeError::NotImplemented(String::from("RETURN")));
             }
             Statement::Empty => {
                 return Ok(Value::None);
-            },
+            }
             Statement::ClearStatement => {
-                Ok(Value::String("\x0C".to_string()))
+                return self.visit_clear_statement();
             }
         }
     }
 
-    fn eval(&mut self, ast: Line) -> InterpreterResult {
+    async fn eval(&mut self, ast: Line) -> InterpreterResult {
         if ast.number.is_some() {
             let line_number = ast.number.unwrap();
             self.context.program[line_number] = Some(ast);
         } else {
-            return self.visit_statement(&ast.statement);
+            return self.visit_statement(&ast.statement).await;
         }
 
         Ok(Value::None)
     }
 
-    fn internal_execute(&mut self, source: &str) -> Result<String, RuntimeError> {
-        let mut parser = Parser::new(source);
-        let ast = parser.parse();
+    pub async fn execute(&mut self) {
+        write_line("Ready!");
 
-        match ast {
-            Ok(ast) => {
-                let value = self.eval(ast)?;
-                Ok(format!("{}", value))
+        loop {
+            set_prompt("> ");
+
+            let source = read_line().await;
+            write_line(format!(":{}", source).as_str());
+
+            let mut parser = Parser::new(source.as_str());
+            let ast = parser.parse();
+
+            if ast.is_err() {
+                write_line(format!("{}", ast.err().unwrap()).as_str());
+                continue;
             }
-            Err(error) => Err(RuntimeError::SyntaxError(error)),
+
+            let value = self.eval(ast.ok().unwrap()).await;
+            match value {
+                Ok(value) => {
+                    if value != Value::None {
+                        write_line(format!("{}", value).as_str());
+                    }
+                }
+                Err(error) => {
+                    write_line(format!("{}", error).as_str());
+                }
+            }
         }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn execute(&mut self, source: &str) -> Result<String, JsError> {
-        let result = self.internal_execute(source);
-
-        match result {
-            Ok(value) => Ok(value),
-            Err(error) => Err(JsError::new(&format!("{}", error))),
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn execute(&mut self, source: &str) -> Result<String, RuntimeError> {
-        let result = self.internal_execute(source)?;
-
-        Ok(result)
     }
 }

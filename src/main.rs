@@ -1,33 +1,15 @@
 mod ast;
 mod errors;
 mod interpreter;
+mod io;
 mod lexer;
 mod parser;
 
 use interpreter::Interpreter;
 
-use std::io::Write;
-use std::io::{stdin, stdout};
-
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut interpreter = Interpreter::new();
 
-    println!("Welcome to TINY BASIC!");
-    loop {
-        let mut buffer = String::new();
-        print!("> ");
-        stdout().flush().unwrap();
-
-        stdin().read_line(&mut buffer).unwrap();
-        let result = interpreter.execute(&buffer);
-
-        match result {
-            Ok(value) => {
-                println!("{}", value);
-            }
-            Err(error) => {
-                eprintln!("{}", error);
-            }
-        }
-    }
+    interpreter.execute().await;
 }

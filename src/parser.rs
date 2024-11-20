@@ -8,12 +8,14 @@ pub type ParseResult<T> = Result<T, SyntaxError>;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
+    source: &'a str,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             lexer: Lexer::new(source),
+            source,
         }
     }
 
@@ -283,6 +285,7 @@ impl<'a> Parser<'a> {
                 "GOTO" => self.parse_goto_statement(),
                 "GOSUB" => self.parse_gosub_statement(),
                 "RUN" => Ok(Statement::RunStatement),
+                "LIST" => Ok(Statement::ListStatement),
                 "CLEAR" => Ok(Statement::ClearStatement),
                 "RETURN" => Ok(Statement::ReturnStatement),
                 "END" => Ok(Statement::EndStatement),
@@ -310,10 +313,12 @@ impl<'a> Parser<'a> {
             TokenKind::Eol => Ok(Line {
                 number: None,
                 statement: Statement::Empty,
+                source: String::from(self.source),
             }),
             TokenKind::Identifier => Ok(Line {
                 number: None,
                 statement: self.parse_statement()?,
+                source: String::from(self.source),
             }),
             TokenKind::NumberLiteral => {
                 let line_number = match next_token.value {
@@ -325,6 +330,7 @@ impl<'a> Parser<'a> {
                 Ok(Line {
                     number: line_number,
                     statement: self.parse_statement()?,
+                    source: String::from(self.source),
                 })
             }
             _ => unreachable!(),
