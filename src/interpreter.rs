@@ -152,6 +152,7 @@ impl Interpreter {
     async fn visit_run_statement(&mut self) -> InterpreterResult {
         self.context.current_line = 0;
         self.context.stack.clear();
+        self.context.variables.clear();
 
         let mut output: Vec<Value> = vec![];
         while self.context.current_line < 255 {
@@ -272,10 +273,16 @@ impl Interpreter {
             "GOSUB <line>",
             "RETURN",
             "END",
-            "CLEAR",
+            "CLS",
             "LIST",
             "RUN",
+            "NEW",
         ].join("\n")))
+    }
+
+    fn visit_new_statement(&mut self) -> InterpreterResult {
+        self.context.program = [const { None }; 255];
+        Ok(Value::None)
     }
 
     async fn visit_statement(&mut self, statement: &Statement) -> InterpreterResult {
@@ -316,6 +323,9 @@ impl Interpreter {
             },
             Statement::HelpStatement => {
                return self.visit_help_statement();
+            },
+            Statement::NewStatement => {
+                return self.visit_new_statement();
             }
         }
     }

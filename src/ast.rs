@@ -88,6 +88,7 @@ pub enum Statement {
     GoSubStatement {
         location: Expression,
     },
+    NewStatement,
     RunStatement,
     ReturnStatement,
     EndStatement,
