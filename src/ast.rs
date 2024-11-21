@@ -93,7 +93,7 @@ pub enum Statement {
     ReturnStatement,
     EndStatement,
     HelpStatement,
-    ClearStatement,
+    ClsStatement,
     ListStatement,
     Empty,
 }

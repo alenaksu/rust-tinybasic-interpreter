@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
                 "NEW" => Ok(Statement::NewStatement),
                 "RUN" => Ok(Statement::RunStatement),
                 "LIST" => Ok(Statement::ListStatement),
-                "CLS" => Ok(Statement::ClearStatement),
+                "CLS" => Ok(Statement::ClsStatement),
                 "RETURN" => Ok(Statement::ReturnStatement),
                 "END" => Ok(Statement::EndStatement),
                 "HELP" => Ok(Statement::HelpStatement),

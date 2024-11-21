@@ -9,7 +9,7 @@ use std::fmt;
 
 use wasm_bindgen::prelude::*;
 
-use crate::io::{clear, read_line, set_prompt, write, write_line};
+use crate::io::{clear, read_line, set_prompt, write_line};
 
 #[derive(Debug, Clone, PartialEq)]
 enum Value {
@@ -117,7 +117,7 @@ impl Interpreter {
             });
         }
 
-        Ok(Value::String(results.join(", ")))
+        Ok(Value::String(results.join(" ")))
     }
 
     async fn visit_if_statement(
@@ -225,7 +225,7 @@ impl Interpreter {
         Ok(Value::String(output.join("\n")))
     }
 
-    fn visit_clear_statement(&self) -> InterpreterResult {
+    fn visit_cls_statement(&self) -> InterpreterResult {
         clear();
         Ok(Value::None)
     }
@@ -318,8 +318,8 @@ impl Interpreter {
             Statement::Empty => {
                 return Ok(Value::None);
             }
-            Statement::ClearStatement => {
-                return self.visit_clear_statement();
+            Statement::ClsStatement => {
+                return self.visit_cls_statement();
             },
             Statement::HelpStatement => {
                return self.visit_help_statement();
