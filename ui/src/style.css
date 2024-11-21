@@ -3,15 +3,41 @@
 :root {
     --primary-color: #c3ef8f;
     --background-color: #252926;
-    --font-size: 20px;
-    --line-height: 1.5;
-    --scanlines-size: 5px;
+    --font-size: 24px;
+    --line-height: 1.2;
+    --scanlines-size: 6px;
+    --glitch-color-0: rgb(255, 59, 59);
+    --glitch-color-1: rgb(47, 103, 235);
+    --glitch-size: 1px;
     scrollbar-color: var(--primary-color) var(--background-color);
 }
 
+.theme-phosphor {
+    --primary-color: #04a004;
+    --background-color: #032002;
+    --glitch-color-0: #055707;
+    --glitch-color-1: #007800;
+}
+
 .theme-amber {
-    --primary-color: #ffcb6b;
-    --background-color: #2d2d2d;
+    --primary-color: #f5941f;
+    --background-color: #3a1000;
+    --glitch-color-0: #581a02;
+    --glitch-color-1: #381000;
+}
+
+.theme-p7 {
+    --primary-color: #d9ebf1;
+    --background-color: #435275;
+    --glitch-color-0: #526187;
+    --glitch-color-1: #495776;
+}
+
+.theme-apple {
+    --primary-color: #58e556;
+    --background-color: #0a0e0a;
+    --glitch-color-0: #2c6e2c;
+    --glitch-color-1: #2e8c2e;
 }
 
 * {
@@ -28,6 +54,7 @@ body {
     font-size: var(--font-size);
     line-height: var(--line-height);
     letter-spacing: 2px;
+    background: black;
 }
 
 @keyframes flicker {
@@ -119,12 +146,19 @@ body {
     left: 0;
     bottom: 0;
     right: 0;
-    background: linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 30%,
+        rgba(0, 0, 0, 0.1) 30%,
+        rgba(0, 0, 0, 0.1) 70%,
+        rgba(0, 0, 0, 0)
+    );
     z-index: 2;
     background-size: 100% var(--scanlines-size);
     pointer-events: none;
     background-position-y: 0;
-    animation: scanlines 0.8s linear infinite;
+    animation: scanlines 1.5s linear infinite;
+    mix-blend-mode: hard-light;
 }
 
 @keyframes scanlines {
@@ -151,16 +185,19 @@ body {
     color: var(--primary-color);
 
     text-transform: uppercase;
-    padding: 1rem;
     display: flex;
     align-items: flex-start;
     justify-content: flex-start;
     flex-direction: column;
 
-    text-shadow: 0 0 1px var(--primary-color), 1px 1px 1px blue, -1px -1px 1px red;
+    text-shadow: 0 0 1px var(--primary-color), 0 0 8px var(--primary-color),
+        2px 2px 2px var(--glitch-color-1), -2px -2px 2px var(--glitch-color-0);
 
     outline: 0;
     text-transform: uppercase;
+
+    padding: 3rem;
+    box-shadow: inset 0 0 3rem 0.5rem black;
 }
 
 #output {
@@ -186,7 +223,7 @@ body {
     min-height: 1rem;
 }
 
-#input::after {
+#terminal:focus-within #input::after {
     content: '■';
     opacity: 1;
     animation: cursor 1s infinite;

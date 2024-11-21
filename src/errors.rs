@@ -45,6 +45,7 @@ pub enum RuntimeError {
     SyntaxError(SyntaxError),
     InvalidState(String),
     IllegalLineNumber(String),
+    UndefinedVariable(String),
 }
 
 impl RuntimeError {
@@ -66,6 +67,7 @@ impl fmt::Display for RuntimeError {
                 "Illegal line number in GOTO or GOSUB statement: {}",
                 line
             ),
+            Self::UndefinedVariable(name) => write!(f, "Undefined variable: {}", name),
         }
     }
 }

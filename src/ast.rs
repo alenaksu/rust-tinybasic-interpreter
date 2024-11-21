@@ -91,6 +91,7 @@ pub enum Statement {
     RunStatement,
     ReturnStatement,
     EndStatement,
+    HelpStatement,
     ClearStatement,
     ListStatement,
     Empty,

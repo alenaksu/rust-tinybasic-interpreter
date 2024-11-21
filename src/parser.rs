@@ -289,6 +289,7 @@ impl<'a> Parser<'a> {
                 "CLEAR" => Ok(Statement::ClearStatement),
                 "RETURN" => Ok(Statement::ReturnStatement),
                 "END" => Ok(Statement::EndStatement),
+                "HELP" => Ok(Statement::HelpStatement),
                 _ => Err(SyntaxError::UnexpectedIdentifier(s, next_token.span.start)),
             },
             _ => Err(SyntaxError::UnexpectedToken(next_token)),

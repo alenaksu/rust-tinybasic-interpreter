@@ -64,7 +64,7 @@ impl Interpreter {
                 let value = self.context.variables.get(&identifier.name);
                 match value {
                     Some(value) => Ok(value.clone()),
-                    None => Ok(Value::None),
+                    None => Err(RuntimeError::UndefinedVariable(identifier.name.clone())),
                 }
             }
             Expression::Literal(literal) => match literal {
@@ -237,7 +237,6 @@ impl Interpreter {
 
         self.context.current_line = location;
 
-
         Ok(Value::None)
     }
 
@@ -254,13 +253,29 @@ impl Interpreter {
                 self.context.current_line = location;
                 Ok(Value::None)
             }
-            None => Err(RuntimeError::InvalidOperation(self.context.current_line)),
+            None => Ok(Value::None),
         }
     }
 
     fn visit_end_statement(&mut self) -> InterpreterResult {
         self.context.current_line = self.context.program.len();
         Ok(Value::None)
+    }
+
+    fn visit_help_statement(&self) -> InterpreterResult {
+        Ok(Value::String(vec![
+            "PRINT <expression>[, <expression>...]",
+            "INPUT <variable>[, <variable>...]",
+            "IF <condition> THEN <statement>",
+            "VAR <variable> = <expression>",
+            "GOTO <line>",
+            "GOSUB <line>",
+            "RETURN",
+            "END",
+            "CLEAR",
+            "LIST",
+            "RUN",
+        ].join("\n")))
     }
 
     async fn visit_statement(&mut self, statement: &Statement) -> InterpreterResult {
@@ -283,9 +298,7 @@ impl Interpreter {
             Statement::GoSubStatement { location } => {
                 return self.visit_gosub_statement(location);
             }
-            Statement::EndStatement => {
-                return self.visit_end_statement()
-            }
+            Statement::EndStatement => return self.visit_end_statement(),
             Statement::ListStatement => {
                 return self.visit_list_statement();
             }
@@ -300,6 +313,9 @@ impl Interpreter {
             }
             Statement::ClearStatement => {
                 return self.visit_clear_statement();
+            },
+            Statement::HelpStatement => {
+               return self.visit_help_statement();
             }
         }
     }
