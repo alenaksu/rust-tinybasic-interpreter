@@ -1,5 +1,6 @@
 # Tiny Basic
 
+A simple interpreter for TinyBasic language made for the purpose of learning Rust.
 
 ## Grammar (Backus-Naur form)
 

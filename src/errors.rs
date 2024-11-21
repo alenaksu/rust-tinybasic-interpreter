@@ -44,6 +44,7 @@ pub enum RuntimeError {
     InvalidOperation(usize),
     SyntaxError(SyntaxError),
     InvalidState(String),
+    IllegalLineNumber(String),
 }
 
 impl RuntimeError {
@@ -60,6 +61,11 @@ impl fmt::Display for RuntimeError {
             Self::InvalidOperation(pos) => write!(f, "Invalid operation at line {}", pos),
             Self::SyntaxError(name) => write!(f, "Syntax error: {}", name),
             Self::InvalidState(name) => write!(f, "Invalid state: {}", name),
+            Self::IllegalLineNumber(line) => write!(
+                f,
+                "Illegal line number in GOTO or GOSUB statement: {}",
+                line
+            ),
         }
     }
 }

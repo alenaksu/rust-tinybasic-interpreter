@@ -2,12 +2,16 @@
 
 :root {
     --primary-color: #c3ef8f;
-    --secondary-color: #ffd52c;
-    --tertiary-color: #c72d04;
     --background-color: #252926;
     --font-size: 20px;
     --line-height: 1.5;
+    --scanlines-size: 5px;
     scrollbar-color: var(--primary-color) var(--background-color);
+}
+
+.theme-amber {
+    --primary-color: #ffcb6b;
+    --background-color: #2d2d2d;
 }
 
 * {
@@ -100,11 +104,11 @@ body {
     left: 0;
     bottom: 0;
     right: 0;
-    background: rgba(18, 16, 16, 0.1);
+    background: rgba(0, 0, 0, 0.1);
     opacity: 0;
     z-index: 2;
     pointer-events: none;
-    animation: flicker 0.15s infinite;
+    animation: flicker 200ms infinite;
 }
 
 .scanlines::before {
@@ -115,16 +119,20 @@ body {
     left: 0;
     bottom: 0;
     right: 0;
-    background: linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(255, 255, 255, 0.15) 50%);
+    background: linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
     z-index: 2;
-    background-size: 100% 5px;
+    background-size: 100% var(--scanlines-size);
     pointer-events: none;
     background-position-y: 0;
+    animation: scanlines 0.8s linear infinite;
 }
 
 @keyframes scanlines {
     0% {
-        background-position-y: calc(50% - 5px);
+        background-position-y: 0;
+    }
+    100% {
+        background-position-y: var(--scanlines-size);
     }
 }
 
@@ -132,10 +140,6 @@ body {
     50% {
         opacity: 0;
     }
-}
-
-.scanlines::before {
-    animation: scanlines 1s steps(50) infinite;
 }
 
 #terminal {
@@ -170,7 +174,7 @@ body {
 }
 
 #input * {
-  display: none;
+    display: none;
 }
 
 #input {

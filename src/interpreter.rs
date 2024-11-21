@@ -35,6 +35,7 @@ type InterpreterResult = std::result::Result<Value, RuntimeError>;
 pub struct ExecutionContext {
     variables: HashMap<String, Value>,
     program: [Option<Line>; 255],
+    stack: Vec<usize>,
     current_line: usize,
 }
 
@@ -51,6 +52,7 @@ impl Interpreter {
             context: ExecutionContext {
                 variables: HashMap::new(),
                 program: [const { None }; 255],
+                stack: vec![0],
                 current_line: 0,
             },
         }
@@ -149,6 +151,7 @@ impl Interpreter {
 
     async fn visit_run_statement(&mut self) -> InterpreterResult {
         self.context.current_line = 0;
+        self.context.stack.clear();
 
         let mut output: Vec<Value> = vec![];
         while self.context.current_line < 255 {
@@ -226,6 +229,40 @@ impl Interpreter {
         Ok(Value::None)
     }
 
+    fn visit_goto_statement(&mut self, location: &Expression) -> InterpreterResult {
+        let location = match self.visit_expression(location)? {
+            Value::Number(number) => number,
+            value => return Err(RuntimeError::IllegalLineNumber(format!("{}", value))),
+        };
+
+        self.context.current_line = location;
+
+
+        Ok(Value::None)
+    }
+
+    fn visit_gosub_statement(&mut self, location: &Expression) -> InterpreterResult {
+        self.context.stack.push(self.context.current_line);
+        self.visit_goto_statement(location)?;
+
+        Ok(Value::None)
+    }
+
+    fn visit_return_statement(&mut self) -> InterpreterResult {
+        match self.context.stack.pop() {
+            Some(location) => {
+                self.context.current_line = location;
+                Ok(Value::None)
+            }
+            None => Err(RuntimeError::InvalidOperation(self.context.current_line)),
+        }
+    }
+
+    fn visit_end_statement(&mut self) -> InterpreterResult {
+        self.context.current_line = self.context.program.len();
+        Ok(Value::None)
+    }
+
     async fn visit_statement(&mut self, statement: &Statement) -> InterpreterResult {
         match statement {
             Statement::IfStatement { condition, then } => {
@@ -241,13 +278,13 @@ impl Interpreter {
                 return self.visit_input_statement(variables).await;
             }
             Statement::GoToStatement { location } => {
-                return Err(RuntimeError::NotImplemented(String::from("GOTO")));
+                return self.visit_goto_statement(location);
             }
             Statement::GoSubStatement { location } => {
-                return Err(RuntimeError::NotImplemented(String::from("GOSUB")));
+                return self.visit_gosub_statement(location);
             }
             Statement::EndStatement => {
-                return Err(RuntimeError::NotImplemented(String::from("END")));
+                return self.visit_end_statement()
             }
             Statement::ListStatement => {
                 return self.visit_list_statement();
@@ -256,7 +293,7 @@ impl Interpreter {
                 return Box::pin(self.visit_run_statement()).await;
             }
             Statement::ReturnStatement => {
-                return Err(RuntimeError::NotImplemented(String::from("RETURN")));
+                return self.visit_return_statement();
             }
             Statement::Empty => {
                 return Ok(Value::None);
