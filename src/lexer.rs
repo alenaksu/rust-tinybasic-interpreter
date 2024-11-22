@@ -9,7 +9,6 @@ pub enum TokenKind {
     StringLiteral,
     NumberLiteral,
     Identifier,
-    NewLine,
     LeftParen,
     RightParen,
     Comma,
@@ -24,12 +23,12 @@ pub enum TokenKind {
     GreaterThan,
     GreaterThanOrEqual,
     Eol,
+    Eof
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenValue {
     None,
-    NewLine,
     Digit(usize),
     String(String),
 }
@@ -50,7 +49,7 @@ pub struct Token {
 impl Token {
     pub fn default() -> Token {
         Token {
-            kind: TokenKind::Eol,
+            kind: TokenKind::Eof,
             span: Span { start: 0, end: 0 },
             value: TokenValue::None,
         }
@@ -148,12 +147,12 @@ impl<'a> Lexer<'a> {
         self.next_char();
 
         Ok(Token {
-            kind: TokenKind::NewLine,
+            kind: TokenKind::Eol,
             span: Span {
                 start: self.offset(),
                 end: self.offset(),
             },
-            value: TokenValue::NewLine,
+            value: TokenValue::None,
         })
     }
 
@@ -216,7 +215,7 @@ impl<'a> Lexer<'a> {
         }
 
         Ok(Token {
-            kind: TokenKind::Eol,
+            kind: TokenKind::Eof,
             span: Span {
                 start: self.offset(),
                 end: self.offset(),
@@ -242,7 +241,7 @@ impl<'a> Lexer<'a> {
     fn get_value(&self, start: usize, end: usize) -> TokenValue {
         match &self.source[start..end] {
             "" => TokenValue::None,
-            "\n" => TokenValue::NewLine,
+            "\n" => TokenValue::None,
             value => {
                 if let Ok(value) = value.parse() {
                     TokenValue::Digit(value)

@@ -95,6 +95,9 @@ pub enum Statement {
     HelpStatement,
     ClsStatement,
     ListStatement,
+    RemStatement,
+    LoadStatement,
+    SaveStatement,
     Empty,
 }
 

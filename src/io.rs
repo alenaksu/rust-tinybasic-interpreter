@@ -11,6 +11,13 @@ extern "C" {
     fn terminal_set_prompt(prompt: &str);
 }
 
+#[wasm_bindgen(js_namespace = io)]
+extern "C" {
+    #[wasm_bindgen(catch)]
+    async fn io_load_file() -> Result<JsValue, JsValue>;
+    fn io_save_file(source: &str);
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn read_line() -> String {
     let mut buffer = String::new();
@@ -32,7 +39,7 @@ pub fn write_line(line: &str) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn clear() {
+pub fn clear() {
     std::process::Command::new("clear").status().unwrap();
 }
 
@@ -41,6 +48,14 @@ pub fn set_prompt(prompt: &str) {
     print!("{}", prompt);
     stdout().flush().unwrap();
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn load_file() -> Option<String> {
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn save_file(source: &str) {}
 
 #[cfg(target_arch = "wasm32")]
 pub async fn read_line() -> String {
@@ -71,4 +86,19 @@ pub fn clear() {
 #[cfg(target_arch = "wasm32")]
 pub fn set_prompt(prompt: &str) {
     terminal_set_prompt(prompt);
+}
+
+#[cfg(target_arch = "wasm32")]
+pub async fn load_file() -> Option<String> {
+    let value = io_load_file().await;
+
+    match value {
+        Ok(value) => Some(value.as_string().unwrap()),
+        Err(error) => None,
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn save_file(source: &str) {
+    io_save_file(source);
 }

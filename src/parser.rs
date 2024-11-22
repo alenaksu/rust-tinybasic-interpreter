@@ -3,6 +3,7 @@ use std::vec;
 use crate::ast::*;
 use crate::errors::SyntaxError;
 use crate::lexer::{Lexer, TokenKind, TokenValue};
+use crate::program::Program;
 
 pub type ParseResult<T> = Result<T, SyntaxError>;
 
@@ -274,6 +275,13 @@ impl<'a> Parser<'a> {
         return Ok(Statement::GoSubStatement { location });
     }
 
+    fn parse_rem_statement(&mut self) -> ParseResult<Statement> {
+        while self.lexer.peek()?.kind != TokenKind::Eol {
+            self.lexer.next()?;
+        }
+        Ok(Statement::RemStatement)
+    }
+
     fn parse_statement(&mut self) -> ParseResult<Statement> {
         let next_token = self.lexer.next()?;
         let statement = match next_token.value.clone() {
@@ -291,6 +299,9 @@ impl<'a> Parser<'a> {
                 "RETURN" => Ok(Statement::ReturnStatement),
                 "END" => Ok(Statement::EndStatement),
                 "HELP" => Ok(Statement::HelpStatement),
+                "LOAD" => Ok(Statement::LoadStatement),
+                "SAVE" => Ok(Statement::SaveStatement),
+                "REM" => self.parse_rem_statement(),
                 _ => Err(SyntaxError::UnexpectedIdentifier(s, next_token.span.start)),
             },
             _ => Err(SyntaxError::UnexpectedToken(next_token)),
@@ -299,43 +310,51 @@ impl<'a> Parser<'a> {
         statement
     }
 
-    pub fn parse(&mut self) -> ParseResult<Line> {
-        let next_token = self.lexer.peek()?;
+    pub fn parse(&mut self) -> ParseResult<Vec<Line>> {
+        let mut lines: Vec<Line> = vec![];
 
-        self.expect_token(
-            &[
-                TokenKind::Eol,
-                TokenKind::Identifier,
-                TokenKind::NumberLiteral,
-            ],
-            None,
-        )?;
+        while self.lexer.peek()?.kind != TokenKind::Eof {
+            self.expect_token(
+                &[
+                    TokenKind::Eol,
+                    TokenKind::Identifier,
+                    TokenKind::NumberLiteral,
+                ],
+                None,
+            )?;
 
-        match next_token.kind {
-            TokenKind::Eol => Ok(Line {
-                number: None,
-                statement: Statement::Empty,
-                source: String::from(self.source),
-            }),
-            TokenKind::Identifier => Ok(Line {
-                number: None,
-                statement: self.parse_statement()?,
-                source: String::from(self.source),
-            }),
-            TokenKind::NumberLiteral => {
-                let line_number = match next_token.value {
-                    TokenValue::Digit(number) => Some(number),
-                    _ => None,
-                };
+            let next_token = self.lexer.peek()?;
+
+            if next_token.kind == TokenKind::Eol {
                 self.lexer.next()?;
-
-                Ok(Line {
-                    number: line_number,
-                    statement: self.parse_statement()?,
-                    source: String::from(self.source),
-                })
+                continue;
             }
-            _ => unreachable!(),
+
+            let line = match next_token.kind {
+                TokenKind::Identifier => Ok(Line {
+                    number: None,
+                    statement: self.parse_statement()?,
+                    source: self.source[next_token.span.start..self.lexer.offset()].to_string(),
+                }),
+                TokenKind::NumberLiteral => {
+                    let line_number = match next_token.value {
+                        TokenValue::Digit(number) => Some(number),
+                        _ => None,
+                    };
+                    self.lexer.next()?;
+
+                    Ok(Line {
+                        number: line_number,
+                        statement: self.parse_statement()?,
+                        source: self.source[next_token.span.start..self.lexer.offset()].to_string(),
+                    })
+                }
+                _ => unreachable!(),
+            };
+
+            lines.push(line?);
         }
+
+        Ok(lines)
     }
 }

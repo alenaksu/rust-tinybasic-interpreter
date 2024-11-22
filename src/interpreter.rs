@@ -4,12 +4,13 @@ use crate::ast::{
 };
 use crate::errors::RuntimeError;
 use crate::parser::Parser;
+use crate::program::Program;
 use std::collections::HashMap;
 use std::fmt;
 
 use wasm_bindgen::prelude::*;
 
-use crate::io::{clear, read_line, set_prompt, write_line};
+use crate::io::{clear, load_file, read_line, save_file, set_prompt, write_line};
 
 #[derive(Debug, Clone, PartialEq)]
 enum Value {
@@ -32,16 +33,22 @@ impl fmt::Display for Value {
 
 type InterpreterResult = std::result::Result<Value, RuntimeError>;
 
-pub struct ExecutionContext {
+pub struct RuntimeContext {
     variables: HashMap<String, Value>,
-    program: [Option<Line>; 255],
+    program: Program,
     stack: Vec<usize>,
     current_line: usize,
 }
 
+pub enum InterpreterState {
+    Running,
+    Stopped,
+}
+
 #[wasm_bindgen]
 pub struct Interpreter {
-    context: ExecutionContext,
+    context: RuntimeContext,
+    state: InterpreterState,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -49,13 +56,25 @@ impl Interpreter {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
     pub fn new() -> Interpreter {
         Interpreter {
-            context: ExecutionContext {
+            context: RuntimeContext {
                 variables: HashMap::new(),
-                program: [const { None }; 255],
+                program: Program::new(),
                 stack: vec![0],
                 current_line: 0,
             },
+            state: InterpreterState::Stopped,
         }
+    }
+
+    fn reset(&mut self) {
+        self.context.current_line = 0;
+        self.context.stack.clear();
+        self.context.variables.clear();
+    }
+
+    fn new_program(&mut self) {
+        self.context.program.clear();
+        self.reset();
     }
 
     fn visit_expression(&self, expression: &Expression) -> InterpreterResult {
@@ -64,7 +83,13 @@ impl Interpreter {
                 let value = self.context.variables.get(&identifier.name);
                 match value {
                     Some(value) => Ok(value.clone()),
-                    None => Err(RuntimeError::UndefinedVariable(identifier.name.clone())),
+                    None => Err(RuntimeError::UndefinedVariable(
+                        self.context
+                            .program
+                            .get(self.context.current_line)
+                            .unwrap()
+                            .source,
+                    )),
                 }
             }
             Expression::Literal(literal) => match literal {
@@ -150,32 +175,28 @@ impl Interpreter {
     }
 
     async fn visit_run_statement(&mut self) -> InterpreterResult {
-        self.context.current_line = 0;
-        self.context.stack.clear();
-        self.context.variables.clear();
+        self.state = InterpreterState::Running;
 
-        let mut output: Vec<Value> = vec![];
-        while self.context.current_line < 255 {
-            let line = self.context.program[self.context.current_line].clone();
+        self.reset();
+
+        while self.context.current_line < self.context.program.lines.len() {
+            let line = self.context.program.get(self.context.current_line);
             self.context.current_line += 1;
-
             match line {
                 Some(line) => {
-                    let statement = &line.statement;
-                    output.push(self.visit_statement(statement).await?);
+                    let value = self.visit_statement(&line.statement).await?;
+
+                    if value != Value::None {
+                        write_line(format!("{}", value).as_str());
+                    }
                 }
                 None => {}
-            }
+            };
         }
 
-        Ok(Value::String(
-            output
-                .iter()
-                .filter(|v| **v != Value::None)
-                .map(|v| format!("{}", v))
-                .collect::<Vec<String>>()
-                .join("\n"),
-        ))
+        self.state = InterpreterState::Stopped;
+
+        Ok(Value::None)
     }
 
     fn visit_var_statement(&mut self, declaration: &VarDeclaration) -> InterpreterResult {
@@ -212,17 +233,7 @@ impl Interpreter {
     }
 
     fn visit_list_statement(&self) -> InterpreterResult {
-        let mut output: Vec<String> = vec![];
-        for line in self.context.program.iter() {
-            match line {
-                Some(line) => {
-                    output.push(format!("{}", line.source.trim()));
-                }
-                None => {}
-            }
-        }
-
-        Ok(Value::String(output.join("\n")))
+        Ok(Value::String(self.context.program.print()))
     }
 
     fn visit_cls_statement(&self) -> InterpreterResult {
@@ -259,29 +270,49 @@ impl Interpreter {
     }
 
     fn visit_end_statement(&mut self) -> InterpreterResult {
-        self.context.current_line = self.context.program.len();
+        self.context.current_line = self.context.program.lines.len();
         Ok(Value::None)
     }
 
     fn visit_help_statement(&self) -> InterpreterResult {
-        Ok(Value::String(vec![
-            "PRINT <expression>[, <expression>...]",
-            "INPUT <variable>[, <variable>...]",
-            "IF <condition> THEN <statement>",
-            "VAR <variable> = <expression>",
-            "GOTO <line>",
-            "GOSUB <line>",
-            "RETURN",
-            "END",
-            "CLS",
-            "LIST",
-            "RUN",
-            "NEW",
-        ].join("\n")))
+        Ok(Value::String(
+            vec![
+                "PRINT <expression>[, <expression>...]",
+                "INPUT <variable>[, <variable>...]",
+                "IF <condition> THEN <statement>",
+                "VAR <variable> = <expression>",
+                "GOTO <line>",
+                "GOSUB <line>",
+                "REM <comment>",
+                "RETURN",
+                "END",
+                "CLS",
+                "LIST",
+                "RUN",
+                "NEW",
+            ]
+            .join("\n"),
+        ))
     }
 
     fn visit_new_statement(&mut self) -> InterpreterResult {
-        self.context.program = [const { None }; 255];
+        self.new_program();
+        Ok(Value::None)
+    }
+
+    async fn visit_load_statement(&mut self) -> InterpreterResult {
+        let source = load_file().await;
+        match source {
+            None => return Ok(Value::None),
+            Some(source) => self.load_program(source),
+        }
+
+        Ok(Value::None)
+    }
+
+    async fn visit_save_statement(&mut self) -> InterpreterResult {
+        save_file(self.context.program.print().as_str());
+
         Ok(Value::None)
     }
 
@@ -320,20 +351,28 @@ impl Interpreter {
             }
             Statement::ClsStatement => {
                 return self.visit_cls_statement();
-            },
+            }
             Statement::HelpStatement => {
-               return self.visit_help_statement();
-            },
+                return self.visit_help_statement();
+            }
             Statement::NewStatement => {
                 return self.visit_new_statement();
+            }
+            Statement::RemStatement => {
+                return Ok(Value::None);
+            }
+            Statement::LoadStatement => {
+                return self.visit_load_statement().await;
+            }
+            Statement::SaveStatement => {
+                return self.visit_save_statement().await;
             }
         }
     }
 
     async fn eval(&mut self, ast: Line) -> InterpreterResult {
         if ast.number.is_some() {
-            let line_number = ast.number.unwrap();
-            self.context.program[line_number] = Some(ast);
+            self.context.program.set(ast);
         } else {
             return self.visit_statement(&ast.statement).await;
         }
@@ -358,17 +397,39 @@ impl Interpreter {
                 continue;
             }
 
-            let value = self.eval(ast.ok().unwrap()).await;
-            match value {
-                Ok(value) => {
-                    if value != Value::None {
-                        write_line(format!("{}", value).as_str());
+            for line in ast.ok().unwrap() {
+                let value = self.eval(line).await;
+                match value {
+                    Ok(value) => {
+                        if value != Value::None {
+                            write_line(format!("{}", value).as_str());
+                        }
                     }
-                }
-                Err(error) => {
-                    write_line(format!("{}", error).as_str());
+                    Err(error) => {
+                        write_line(format!("{}", error).as_str());
+                    }
                 }
             }
         }
+    }
+
+    pub fn load_program(&mut self, source: String) {
+        self.new_program();
+
+        let mut parser = Parser::new(source.as_str());
+        let ast = parser.parse();
+
+        match ast {
+            Ok(ast) => {
+                for line in ast {
+                    self.context.program.set(line);
+                }
+            }
+            Err(error) => {
+                write_line(format!("{}", error).as_str());
+            }
+        }
+
+        write_line("program loaded");
     }
 }
