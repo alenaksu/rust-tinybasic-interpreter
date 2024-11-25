@@ -208,6 +208,7 @@ body {
     word-wrap: break-word;
     font-size: inherit;
     font-family: inherit;
+    word-break: break-all;
 }
 
 #input * {
@@ -221,6 +222,7 @@ body {
     display: inline-block;
     min-width: 1rem;
     min-height: 1rem;
+    word-break: break-all;
 }
 
 #terminal:focus-within #input::after {
