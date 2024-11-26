@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           registry-url: https://registry.npmjs.org/
-      - run: cargo install
+      - run: cargo install --path
       - run: ./build.sh
       - run: npm ci
       - run: npm run docs
