@@ -16,7 +16,7 @@ use crate::io::{clear, load_file, read_line, save_file, set_prompt, write_line};
 enum Value {
     Number(usize),
     String(String),
-    Boolean(bool),
+    // Boolean(bool),
     None,
 }
 
@@ -25,7 +25,7 @@ impl fmt::Display for Value {
         match self {
             Self::Number(number) => write!(f, "{}", number),
             Self::String(string) => write!(f, "{}", string),
-            Self::Boolean(boolean) => write!(f, "{}", if *boolean { "True" } else { "False" }),
+            // Self::Boolean(boolean) => write!(f, "{}", if *boolean { "True" } else { "False" }),
             Self::None => write!(f, ""),
         }
     }

@@ -1,4 +1,4 @@
-use crate::ast::{Line, Statement};
+use crate::ast::Line;
 
 pub const MAX_LINES: usize = 8 * 1024;
 

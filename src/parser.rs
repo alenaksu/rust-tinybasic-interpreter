@@ -3,7 +3,6 @@ use std::vec;
 use crate::ast::*;
 use crate::errors::SyntaxError;
 use crate::lexer::{Lexer, TokenKind, TokenValue};
-use crate::program::Program;
 
 pub type ParseResult<T> = Result<T, SyntaxError>;
 
@@ -26,7 +25,7 @@ impl<'a> Parser<'a> {
         if !kinds.contains(&next_token.kind) {
             return Err(SyntaxError::UnexpectedToken(next_token));
         } else if value.is_some() {
-            let expected_value = value.unwrap().clone();
+            let expected_value = value.unwrap();
             if next_token.value != expected_value {
                 return Err(SyntaxError::UnexpectedToken(next_token));
             }
@@ -284,7 +283,7 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> ParseResult<Statement> {
         let next_token = self.lexer.next()?;
-        let statement = match next_token.value.clone() {
+        let statement = match next_token.value {
             TokenValue::String(s) => match s.as_str() {
                 "PRINT" => self.parse_print_statement(),
                 "INPUT" => self.parse_input_statement(),
