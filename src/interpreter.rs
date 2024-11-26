@@ -280,7 +280,7 @@ impl Interpreter {
                 "PRINT <expression>[, <expression>...]",
                 "INPUT <variable>[, <variable>...]",
                 "IF <condition> THEN <statement>",
-                "VAR <variable> = <expression>",
+                "LET <variable> = <expression>",
                 "GOTO <line>",
                 "GOSUB <line>",
                 "REM <comment>",
