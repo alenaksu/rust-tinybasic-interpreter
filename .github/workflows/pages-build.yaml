@@ -10,6 +10,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
 
 jobs:
   build:
@@ -19,10 +20,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           registry-url: https://registry.npmjs.org/
-      - run: cargo install --path
-      - run: ./build.sh
+
       - run: npm ci
-      - run: npm run docs
+
+      - name: Install wasm-bindgen
+        run: cargo install --force wasm-bindgen-cli
+
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build WASM
+        run: ./build.sh
+
+      - name: Build Pages
+        run: npm run docs
       - run: |
           git config --global user.name 'Alessandro'
           git config --global user.email 'alenaksu@users.noreply.github.com'
