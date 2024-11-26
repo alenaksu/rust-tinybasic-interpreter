@@ -19,8 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           registry-url: https://registry.npmjs.org/
-      - run: rustup target add wasm32-unknown-unknown
-      - run: rustup update
+      - run: cargo install
       - run: ./build.sh
       - run: npm ci
       - run: npm run docs
