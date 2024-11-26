@@ -48,7 +48,7 @@ pub struct Identifier {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
-    Number { value: usize },
+    Number { value: f32 },
     String { value: String },
 }
 

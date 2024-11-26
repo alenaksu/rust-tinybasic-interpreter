@@ -29,7 +29,7 @@ pub enum TokenKind {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenValue {
     None,
-    Digit(usize),
+    Digit(f32),
     String(String),
 }
 

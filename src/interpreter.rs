@@ -1,6 +1,6 @@
 use crate::ast::{
-    ArithmeticOperator, Expression, Identifier, IfCondition, Line, Literal, RelationOperator,
-    Statement, VarDeclaration,
+    ArithmeticOperator, BinaryExpression, Expression, Identifier, IfCondition, Line, Literal,
+    RelationOperator, Statement, UnaryExpression, UnaryOperator, VarDeclaration,
 };
 use crate::errors::RuntimeError;
 use crate::parser::Parser;
@@ -14,7 +14,7 @@ use crate::io::{clear, load_file, read_line, save_file, set_prompt, write_line};
 
 #[derive(Debug, Clone, PartialEq)]
 enum Value {
-    Number(usize),
+    Number(f32),
     String(String),
     // Boolean(bool),
     None,
@@ -84,49 +84,61 @@ impl Interpreter {
                 match value {
                     Some(value) => Ok(value.clone()),
                     None => Err(RuntimeError::UndefinedVariable(
-                        self.context
-                            .program
-                            .get(self.context.current_line)
-                            .unwrap()
-                            .source,
+                        format!("{}", identifier.name).to_string(),
                     )),
                 }
             }
-            Expression::Literal(literal) => match literal {
-                Literal::Number { value } => Ok(Value::Number(*value)),
-                Literal::String { value } => Ok(Value::String(value.clone())),
-            },
-            Expression::BinaryExpression(binary) => {
-                let left = self.visit_expression(&binary.left)?;
-                let right = self.visit_expression(&binary.right)?;
+            Expression::Literal(literal) => self.visit_literal(literal),
+            Expression::UnaryExpression(unary) => self.visit_unary_expression(unary),
+            Expression::BinaryExpression(binary) => self.visit_binary_expression(binary),
+            _ => return Err(RuntimeError::InvalidOperation(self.context.current_line)),
+        }
+    }
 
-                match (left, right) {
-                    (Value::Number(left), Value::Number(right)) => {
-                        let result = match binary.operator {
-                            ArithmeticOperator::Add => left + right,
-                            ArithmeticOperator::Subtract => left - right,
-                            ArithmeticOperator::Multiply => left * right,
-                            ArithmeticOperator::Divide => left / right,
-                        };
+    fn visit_literal(&self, literal: &Literal) -> InterpreterResult {
+        match literal {
+            Literal::Number { value } => Ok(Value::Number(*value)),
+            Literal::String { value } => Ok(Value::String(value.clone())),
+        }
+    }
 
-                        Ok(Value::Number(result))
-                    }
-                    (Value::String(left), Value::String(right)) => {
-                        let result = match binary.operator {
-                            ArithmeticOperator::Add => left + &right,
-                            _ => {
-                                return Err(RuntimeError::InvalidOperation(
-                                    self.context.current_line,
-                                ))
-                            }
-                        };
+    fn visit_binary_expression(&self, binary: &BinaryExpression) -> InterpreterResult {
+        let left = self.visit_expression(&binary.left)?;
+        let right = self.visit_expression(&binary.right)?;
 
-                        Ok(Value::String(result))
-                    }
+        match (left, right) {
+            (Value::Number(left), Value::Number(right)) => {
+                let result = match binary.operator {
+                    ArithmeticOperator::Add => left + right,
+                    ArithmeticOperator::Subtract => left - right,
+                    ArithmeticOperator::Multiply => left * right,
+                    ArithmeticOperator::Divide => left / right,
+                };
+
+                Ok(Value::Number(result))
+            }
+            (Value::String(left), Value::String(right)) => {
+                let result = match binary.operator {
+                    ArithmeticOperator::Add => left + &right,
                     _ => return Err(RuntimeError::InvalidOperation(self.context.current_line)),
-                }
+                };
+
+                Ok(Value::String(result))
             }
             _ => return Err(RuntimeError::InvalidOperation(self.context.current_line)),
+        }
+    }
+
+    fn visit_unary_expression(&self, unary: &UnaryExpression) -> InterpreterResult {
+        let value = self.visit_expression(&unary.argument)?;
+
+        match value {
+            Value::Number(number) => match unary.operator {
+                Some(UnaryOperator::Plus) => Ok(Value::Number(number)),
+                Some(UnaryOperator::Minus) => Ok(Value::Number(-number)),
+                None => Ok(Value::Number(number)),
+            },
+            _ => Err(RuntimeError::InvalidOperation(self.context.current_line)),
         }
     }
 
@@ -247,7 +259,7 @@ impl Interpreter {
             value => return Err(RuntimeError::IllegalLineNumber(format!("{}", value))),
         };
 
-        self.context.current_line = location;
+        self.context.current_line = location as usize;
 
         Ok(Value::None)
     }

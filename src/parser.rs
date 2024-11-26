@@ -1,3 +1,4 @@
+use std::thread::current;
 use std::vec;
 
 use crate::ast::*;
@@ -68,22 +69,22 @@ impl<'a> Parser<'a> {
             TokenKind::Identifier => Expression::Identifier(Identifier {
                 name: match next_token.value {
                     TokenValue::String(s) => s.clone(),
-                    _ => unreachable!(),
+                    _ => Err(SyntaxError::UnexpectedToken(next_token))?,
                 },
             }),
             TokenKind::NumberLiteral => Expression::Literal(Literal::Number {
                 value: match next_token.value {
                     TokenValue::Digit(d) => d,
-                    _ => unreachable!(),
+                    _ => Err(SyntaxError::UnexpectedToken(next_token))?,
                 },
             }),
             TokenKind::StringLiteral => Expression::Literal(Literal::String {
                 value: match next_token.value {
                     TokenValue::String(s) => s.clone(),
-                    _ => unreachable!(),
+                    _ => Err(SyntaxError::UnexpectedToken(next_token))?,
                 },
             }),
-            _ => unreachable!(),
+            _ => Err(SyntaxError::UnexpectedToken(next_token))?,
         };
 
         if operator.is_none() {
@@ -168,7 +169,10 @@ impl<'a> Parser<'a> {
             variables.push(Identifier {
                 name: match self.lexer.next()?.value {
                     TokenValue::String(s) => s.clone(),
-                    _ => unreachable!(),
+                    _ => {
+                        let current_token = self.lexer.peek()?;
+                        return Err(SyntaxError::UnexpectedToken(current_token));
+                    }
                 },
             });
 
@@ -203,7 +207,7 @@ impl<'a> Parser<'a> {
             TokenKind::LessThanOrEqual => RelationOperator::LessThanOrEqual,
             TokenKind::GreaterThan => RelationOperator::GreaterThan,
             TokenKind::GreaterThanOrEqual => RelationOperator::GreaterThanOrEqual,
-            _ => unreachable!(),
+            _ => Err(SyntaxError::UnexpectedToken(next_token))?,
         };
 
         let right = self.parse_expression()?;
@@ -255,7 +259,10 @@ impl<'a> Parser<'a> {
             declaration: VarDeclaration {
                 name: match name {
                     TokenValue::String(s) => s.clone(),
-                    _ => unreachable!(),
+                    _ => Err(SyntaxError::UnexpectedIdentifier(
+                        format!("{:?}", value),
+                        self.lexer.offset(),
+                    ))?,
                 },
                 value,
             },
@@ -343,12 +350,12 @@ impl<'a> Parser<'a> {
                     self.lexer.next()?;
 
                     Ok(Line {
-                        number: line_number,
+                        number: line_number.map(|n| n as usize),
                         statement: self.parse_statement()?,
                         source: self.source[next_token.span.start..self.lexer.offset()].to_string(),
                     })
                 }
-                _ => unreachable!(),
+                _ => Err(SyntaxError::UnexpectedToken(next_token)),
             };
 
             lines.push(line?);
