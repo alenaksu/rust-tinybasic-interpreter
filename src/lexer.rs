@@ -23,7 +23,7 @@ pub enum TokenKind {
     GreaterThan,
     GreaterThanOrEqual,
     Eol,
-    Eof
+    Eof,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -80,14 +80,14 @@ impl<'a> Lexer<'a> {
         let start = self.offset();
         while let Some(c) = self.peek_char() {
             match c {
-                '0'..='9' => {
+                '0'..='9' | '.' => {
                     self.next_char();
                 }
                 _ => break,
             }
         }
 
-        let value = self.source[start..self.offset()].to_string();
+        let value = self.get_value(start, self.offset());
 
         Ok(Token {
             kind: TokenKind::NumberLiteral,
@@ -95,7 +95,7 @@ impl<'a> Lexer<'a> {
                 start,
                 end: self.offset(),
             },
-            value: TokenValue::Digit(value.parse().unwrap()),
+            value,
         })
     }
 
