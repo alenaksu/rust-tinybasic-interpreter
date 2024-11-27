@@ -23,8 +23,8 @@ impl fmt::Display for SyntaxError {
             Self::UnexpectedToken(token) => {
                 write!(
                     f,
-                    "Unexpected token {:?} at position {}",
-                    token.kind, token.span.start
+                    "Unexpected token {:?}({:?}) at position {}",
+                    token.kind, token.value, token.span.start
                 )
             }
             Self::InvalidVariableName(name, pos) => {
@@ -45,7 +45,7 @@ pub enum RuntimeError {
     SyntaxError(SyntaxError),
     InvalidState(String),
     IllegalLineNumber(String),
-    UndefinedVariable(String),
+    UndefinedVariable(String, usize),
 }
 
 impl RuntimeError {
@@ -67,7 +67,7 @@ impl fmt::Display for RuntimeError {
                 "Illegal line number in GOTO or GOSUB statement: {}",
                 line
             ),
-            Self::UndefinedVariable(name) => write!(f, "Undefined variable: {}", name),
+            Self::UndefinedVariable(name, line) => write!(f, "Undefined variable at line {}: {}", line, name),
         }
     }
 }

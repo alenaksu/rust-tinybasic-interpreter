@@ -128,18 +128,22 @@ impl<'a> Lexer<'a> {
         let start = self.offset();
         while let Some(c) = self.peek_char() {
             match c {
-                'A'..='Z' => {
+                'A'..='Z' | 'a'..='z' => {
                     self.next_char();
                 }
                 _ => break,
             }
         }
+
         let end = self.offset();
+
+        // Identifiers are case-insensitive
+        let value = self.source[start..self.offset()].to_uppercase();
 
         Ok(Token {
             kind: TokenKind::Identifier,
             span: Span { start, end },
-            value: self.get_value(start, end),
+            value: TokenValue::String(value),
         })
     }
 
@@ -154,6 +158,18 @@ impl<'a> Lexer<'a> {
             },
             value: TokenValue::None,
         })
+    }
+
+    fn consume_whitespace(&mut self) {
+        let start = self.offset();
+        while let Some(c) = self.peek_char() {
+            match c {
+                ' ' => {
+                    self.next_char();
+                }
+                _ => break,
+            }
+        }
     }
 
     fn consume_token(&mut self) -> LexerResult<Token> {
@@ -204,9 +220,9 @@ impl<'a> Lexer<'a> {
                     });
                 }
                 '0'..='9' => return self.consume_number_literal(),
-                'A'..='Z' => return self.consume_identifier(),
+                'A'..='Z' | 'a'..='z' => return self.consume_identifier(),
                 ' ' => {
-                    self.next_char();
+                    self.consume_whitespace();
                 }
                 _ => {
                     return Err(SyntaxError::UnexpectedCharacter(c, self.offset()));
@@ -240,7 +256,6 @@ impl<'a> Lexer<'a> {
 
     fn get_value(&self, start: usize, end: usize) -> TokenValue {
         match &self.source[start..end] {
-            "" => TokenValue::None,
             "\n" => TokenValue::None,
             value => {
                 if let Ok(value) = value.parse() {

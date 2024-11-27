@@ -258,7 +258,7 @@ impl<'a> Parser<'a> {
         return Ok(Statement::VarStatement {
             declaration: VarDeclaration {
                 name: match name {
-                    TokenValue::String(s) => s.clone(),
+                    TokenValue::String(s) => s.to_uppercase(),
                     _ => Err(SyntaxError::UnexpectedIdentifier(
                         format!("{:?}", value),
                         self.lexer.offset(),
@@ -282,9 +282,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_rem_statement(&mut self) -> ParseResult<Statement> {
-        while self.lexer.peek()?.kind != TokenKind::Eol {
+        loop {
+            let next_token = self.lexer.peek()?;
+            if next_token.kind == TokenKind::Eol || next_token.kind == TokenKind::Eof {
+                break;
+            }
             self.lexer.next()?;
         }
+
         Ok(Statement::RemStatement)
     }
 

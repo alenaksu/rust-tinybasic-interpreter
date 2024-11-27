@@ -85,6 +85,7 @@ impl Interpreter {
                     Some(value) => Ok(value.clone()),
                     None => Err(RuntimeError::UndefinedVariable(
                         format!("{}", identifier.name).to_string(),
+                        self.context.current_line,
                     )),
                 }
             }
@@ -182,6 +183,19 @@ impl Interpreter {
                     Ok(Value::None)
                 }
             }
+            (Value::String(left), Value::String(right)) => {
+                let result = match condition.operator {
+                    RelationOperator::Equal => left == right,
+                    RelationOperator::NotEqual => left != right,
+                    _ => return Err(RuntimeError::InvalidOperation(self.context.current_line)),
+                };
+
+                if result {
+                    Box::pin(self.visit_statement(&then)).await
+                } else {
+                    Ok(Value::None)
+                }
+            }
             _ => return Err(RuntimeError::InvalidOperation(self.context.current_line)),
         }
     }
@@ -222,10 +236,10 @@ impl Interpreter {
 
     async fn visit_input_statement(&mut self, variables: &Vec<Identifier>) -> InterpreterResult {
         for variable in variables {
-            set_prompt(format!("{}? ", variable.name).as_str());
+            set_prompt(format!("? ").as_str());
 
             let input = read_line().await;
-            write_line(format!("{}? {}", variable.name, input).as_str());
+            write_line(format!("? {}", input).as_str());
 
             let mut parser = Parser::new(input.as_str());
             let expression = parser.parse_expression();

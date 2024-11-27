@@ -1,0 +1,81 @@
+10 REM prepare board
+11 LET A = " "
+12 LET B = " "
+13 LET C = " "
+14 LET D = " "
+15 LET E = " "
+16 LET F = " "
+17 LET G = " "
+18 LET H = " "
+19 LET I = " "
+20 LET K = "X"
+
+30 REM print board
+31 CLS
+32 PRINT "TIC-TAC-TOE"
+33 PRINT ""
+34 PRINT " " + A + " | " + B + " | " + C
+35 PRINT "---+---+---"
+36 PRINT " " + D + " | " + E + " | " + F
+37 PRINT "---+---+---"
+38 PRINT " " + G + " | " + H + " | " + I
+39 PRINT ""
+
+40 REM INPUT
+41 PRINT "PLAYER '" + K + "' ENTER YOUR MOVE (1-9)"
+42 PRINT " 1 | 2 | 3"
+43 PRINT "---+---+---"
+44 PRINT " 4 | 5 | 6"
+45 PRINT "---+---+---"
+46 PRINT " 7 | 8 | 9"
+47 INPUT J
+
+50 REM validate move
+51 IF J = 1 THEN IF A <> " " THEN GOTO 31
+52 IF J = 2 THEN IF B <> " " THEN GOTO 31
+53 IF J = 3 THEN IF C <> " " THEN GOTO 31
+54 IF J = 4 THEN IF D <> " " THEN GOTO 31
+55 IF J = 5 THEN IF E <> " " THEN GOTO 31
+56 IF J = 6 THEN IF F <> " " THEN GOTO 31
+57 IF J = 7 THEN IF G <> " " THEN GOTO 31
+58 IF J = 8 THEN IF H <> " " THEN GOTO 31
+59 IF J = 9 THEN IF I <> " " THEN GOTO 31
+
+60 REM make move
+61 IF J = 1 THEN LET A = K
+62 IF J = 2 THEN LET B = K
+63 IF J = 3 THEN LET C = K
+64 IF J = 4 THEN LET D = K
+65 IF J = 5 THEN LET E = K
+66 IF J = 6 THEN LET F = K
+67 IF J = 7 THEN LET G = K
+68 IF J = 8 THEN LET H = K
+69 IF J = 9 THEN LET I = K
+
+70 REM check for win
+71 IF A = K THEN IF B = K THEN IF C = K THEN GOTO 100
+72 IF A = K THEN IF D = K THEN IF G = K THEN GOTO 100
+73 IF A = K THEN IF E = K THEN IF I = K THEN GOTO 100
+74 IF B = K THEN IF E = K THEN IF H = K THEN GOTO 100
+75 IF C = K THEN IF F = K THEN IF I = K THEN GOTO 100
+76 IF C = K THEN IF E = K THEN IF G = K THEN GOTO 100
+77 IF D = K THEN IF E = K THEN IF F = K THEN GOTO 100
+78 IF G = K THEN IF H = K THEN IF I = K THEN GOTO 100
+
+80 REM check for draw
+81 IF A <> " " THEN IF B <> " " THEN IF C <> " " THEN IF D <> " " THEN IF E <> " " THEN IF F <> " " THEN IF G <> " " THEN IF H <> " " THEN IF I <> " " THEN GOTO 200
+
+90 REM switch player
+91 IF K = "X" THEN GOTO 94
+92 LET K = "X"
+93 GOTO 31
+94 LET K = "O"
+95 GOTO 31
+
+100 PRINT "PLAYER", K, "WINS"
+101 GOTO 300
+
+200 PRINT "DRAW"
+201 GOTO 300
+
+300 END

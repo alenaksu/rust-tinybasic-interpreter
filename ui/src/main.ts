@@ -21,7 +21,7 @@ const readLine = () =>
             'keydown',
             (e) => {
                 if (e.key === 'Enter') {
-                    const value = input.innerText.trim().toUpperCase();
+                    const value = input.innerText.trim()
                     input.innerText = '';
 
                     controller.abort();
